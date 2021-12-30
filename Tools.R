@@ -28,12 +28,13 @@ convert.Dataset <- function(RawData){
   
   datasetCopy$hora <- hour(RawData$date)
   datasetCopy$month <- month(RawData$date)
+  datasetCopy$diaNumero = sapply(datasetCopy$Day_of_week, convertWeekday)
 
-  varsExcluir <- c('month','weekend','rv1','rv2','Visibility',"Day_of_week","WeekStatus","date")
+  varsExcluir <-  c('weekend', 'month', 'RH_out','rv1','rv2',"date","Day_of_week","WeekStatus")
   
   datasetCopy <- datasetCopy%>%select(-varsExcluir)
 
-  datasetCopy[2:27]<- as.data.frame(scale(datasetCopy[2:27]))
+  datasetCopy[2:length(datasetCopy)]<- as.data.frame(scale(datasetCopy[2:length(datasetCopy)]))
   
   
   return(datasetCopy)
@@ -57,7 +58,8 @@ analyzeModels <- function(models,trainDataset,testDataset,colunaTarget){
       melhorModelo <- modelo
       modeloRetorno <- modeloAtual
     }
-    print(paste("Acuracia do modelo ", modelo," = ",rmseModelo, " melhor modelo ", melhorModelo, " com acuracia de ", melhorAcuracia))
+    print(paste("Acuracia do modelo ", modelo," = ",rmseModelo))
+    print(paste(" melhor modelo ", melhorModelo, " com acuracia de ", melhorAcuracia))
   }
   return(modeloRetorno)
 }

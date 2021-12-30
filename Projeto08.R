@@ -13,6 +13,8 @@ carregarPacotes <- function(){
 
 carregarPacotes()
 
+#Iniciando com a carga dos datasets tanto de treino quanto de teste
+
 dataset <- read.csv("projeto8-training.csv")
 View(dataset)
 
@@ -24,37 +26,46 @@ colnames(dataset)
 testDataset <- read.csv('projeto8-testing.csv')
 View(testDataset)
 
-colnames(testDataset)
+sum(is.na(testDataset))
+#tanto no dataset de treino quanto no dataset de teste não existem valores missing
 
-dfColnames = data.frame(colnames(dataset))
-
-write.csv(dfColnames,file = "colunas.csv")
-
+#Irei trabalhar com uma cópia do dataset orignal
 datasetCopy <- dataset
 
 summary(datasetCopy)
 
+
+#Iniciarei traçando um gráfico de correlação entre as variáveis
+#Inicialmente utilizando apenas as variáveis numéricas antes de realizar qualquer transformação nas variáveis categóricas
 corr <- cor(datasetCopy[,2:30])
 
-corrplot(corr)
-
-View(datasetCopy)
-
-corr <- cor(datasetCopy[,2:28])
 corrplot(corr)
 
 summary(datasetCopy$NSM)
 summary(datasetCopy$T_out)
 
+summary(datasetCopy$Appliances)
+
+#Como projeto se trata de prever o gasto com eletrodomésticos irei iniciar veriricando se não existem outliers
+quantile(datasetCopy$Appliances, probs = c(0.1,0.5,0.75,0.90,0.95))
+
+
+#O boxplot nos revela que a variável target "appliances" possui uma quantidade razoável de outliers
+# a depender do algoritmo utilizado precisaremos ou removê-los ou substituítilos pela mediana/média
+boxplot(datasetCopy[,2:29])
+
+
 #algumas colunas são categóricas
 #Assim irei fazer com que se tornem numéricas
 
+#Começando pela coluna WeekStatus, que proporciona a informação de ser final de semana ou não
 unique(datasetCopy$WeekStatus)
-
+#Irei transformá-la em uma variável numérica
 datasetCopy <- datasetCopy%>%mutate(weekend = if_else(WeekStatus == "Weekday",1,0))
 
 unique(datasetCopy$Day_of_week)
 
+#o próximo passo é converter a variável do dia da semana também em variável numérica
 convertWeekday <- function(dia){
   diaRet = ''
   if (dia == "Sunday"){
@@ -75,14 +86,8 @@ convertWeekday <- function(dia){
   return(as.numeric(diaRet))
 }
 
-View(datasetCopy)
 
-datasetCopy <-datasetCopy%>%mutate(diaNumero = convertWeekday(Day_of_week))
-
-datasetCopy$diaNumero <- convertWeekday(datasetCopy$Day_of_week)
-
-datasetCopy$diaNumero = lapply(datasetCopy$Day_of_week,convertWeekday)
-
+datasetCopy$diaNumero = sapply(datasetCopy$Day_of_week, convertWeekday)
 
 #Creio que as variáveis categóricas da forma como estavam não iriam contribuir muito para um eventual modelo preditivo
 #Dessa forma irei transformar as variáveis de data em horas e meses com o seguinte intuito
@@ -93,9 +98,6 @@ datasetCopy$diaNumero = lapply(datasetCopy$Day_of_week,convertWeekday)
 datasetCopy$hora <- hour(datasetCopy$date)
 datasetCopy$month <- month(datasetCopy$date)
 
-for (n in c(1:length(datasetCopy$diaNumero))){
-  datasetCopy[n,31] = convertWeekday(dataset[n,34])
-}
 
 #Excluindo as variáveis que já foram transformadas
 datasetCopy$date = NULL
@@ -104,26 +106,24 @@ datasetCopy$Day_of_week = NULL
 
 View(datasetCopy)
 
-datasetCopy$diaNumero<-as.numeric(datasetCopy$diaNumero)
+str(datasetCopy)
 
+#Agora tendo todas as variáveis como numéricas é mais fácil para visualizar a correlação entre elas utilizando um plot de correlação
 corr <- cor(datasetCopy)
 
 corrplot(corr)
 
+
 #Até o ponto atual, apesar de ter encontrado boa parte do significado das variáveis uma delas ainda não sei o que significa, temos:
 #Appliances ==> Eletrodomésticos, lights ==> luzes, T1..T9 ==> Temperaturas, RH_1..RH_9 ==> Humidades relativas, T_out/RH_out ==> Temperatura e humidade do lado de fora
-#Press_mm_hg ==> pressão atmoférica, Windspeed ==> Velocidade do vento, Visibility ==> Visibilidade, Tdewpoint ==> Ponto de orvalho (condensação), NSM ==> ainda desconhecido
+#Press_mm_hg ==> pressão atmoférica, Windspeed ==> Velocidade do vento, Visibility ==> Visibilidade, Tdewpoint ==> Ponto de orvalho (condensação), NSM ==> Variável desconhecida
 #weekend ==> Fim de semana, diaNumero ==> dia da semana em número para facilitar e entregar ao modelo (variável criada), hora ==> hora do dia (variável criada)
 #Month ==> mês (variável criada)
 #Apenas pelo nome das variáveis é possível supor (embora não se tome decisões baseadas em suposições), que algumas das variáveis não terão relação com consumo de energia
 #Usaremos aprendizado de máquina para inferir quais variáveis são mais significantes.
 
-byHour <- datasetCopy%>%group_by(hora)
+#Mas antes vamos realizar uma breve análise exploratória afim de encontrar alguns insights
 
-byHour%>%summarise(
-  lights = mean(lights)
-)
-View(byHour)
 
 luzPorHora <- datasetCopy%>%group_by(hora)%>%summarise(mediaLuz = mean(lights))
 
@@ -142,41 +142,52 @@ grafEletros = ggplot(data = eletroPorHora, mapping = aes(hora,mediaEletros))+
 grafLuz+grafEletros
 
 #Ao analisar os gráficos lado a lado podemos chegar facilmente a uma correlação entre o consumo de luz com o de eletrodomésticos em função da hora do dia
+#são altamente correlacionados. Os dois gráficos são muito parecidos
 
+#Também podemos tentar verificar se o consumo dos eletrodomésticos no final de semana é maior que durante o final de semana
+#Com o seguinte comando obtemos a informação de que sim
+dataset%>%group_by(WeekStatus)%>%summarise(media = mean(Appliances))
 
 #########################################################################################################################################################
 #################################################Aplicando machine Learning para seleção de variáveis####################################################
 #########################################################################################################################################################
 
 
-#Iniciarei utilizando o randomForest no modo não-supervisionado, conforme é colocado abaixo:
-#https://horvath.genetics.ucla.edu/html/publications/FullManuscriptRFclustering1_final.pdf
 colnames(datasetCopy)
+#O Random forest pode ser utilizado tanto para tarefas de regressão quanto para classificação
+#Também é muito útil para descobrir quanto cada uma das variáveis é relevante para o modelo, além de poder ser utilizado inclusive para aprendizagem não-supervisionada
+
+
 us.rf <- randomForest(Appliances~., data = datasetCopy, importance = TRUE)
 
 varImpPlot(us.rf)
 
-#De acordo com o randomForest as variáveis que menos contribuem com o modelo seriam
+#De acordo com o randomForest as variáveis que menos contribuem com o modelo seriam = 
 #diaNumero, Visibility, weekend, month, rv1, rv2, que deverão ser retiradas do dataset
 
 variaveisNaoPred <- c('diaNumero','month','weekend','rv1','rv2','Visibility')
 
-datasetReduzido <- datasetCopy%>%select(-variaveisNaoPred)
+varianaoPred2 <- c('weekend', 'month', 'RH_out','rv1','rv2')
+
+
+datasetReduzido <- datasetCopy%>%select(-varianaoPred2)
 
 View(datasetReduzido)
+
+length(colnames(datasetReduzido))
 
 #alguns dos métodos que usarei precisam de normalização, assim sendo já irei aplicá-la de maneira a permitir que os métodos funcionem bem
 
-datasetReduzido[2:27]<- as.data.frame(scale(datasetReduzido[2:27]))
+datasetReduzido[2:28]<- as.data.frame(scale(datasetReduzido[2:28]))
 
-View(datasetReduzido)
 
 #podemos visualizar novamente a matriz de correlação antes de iniciar a aplicação de machine learning
 corr <- cor(datasetReduzido)
 corrplot(corr)
 
 #Aqui iniciarei a criação de vários modelos
-#Entretanto para facilitar a transformação dos modelos criei uma função que transforma o dataset original exatamente no formato que precise
+#Entretanto para facilitar a transformação dos datasets da maneira como desejo criei uma função que transforma o dataset original exatamente no formato que preciso
+#Dessa forma posso aplicá-la tanto ao dataset de teste quanto de treino
 
 source("Tools.R")
 
@@ -237,24 +248,43 @@ RMSE(predRidge,test$Appliances)
 
 saveRDS(modeloRidge,"modeloRidge.RDS")
 
-source("Tools.R")
-
 #o seguinte comando cria diversos modelos, os treina e calcula a acurácia deles, retornando o melhor de todos utilizando
 #Como métrica o RMSE, esta função é muito intensiva computacionalmente e pode levar várias horas para ser executada
-#
 
+source("Tools.R")
 melhorModelo <- analyzeModels(c("lm","glm","rpart"),train,test,1)
+#Em minha análise o modelo rpart alcançou uma acurácia medida pelo RMSE de 95%
+#Quero ver se a remoção de alguns outliers do dataset de treino pode ajudar nessa acurácia
+
+#95% dos exemplos no dataset de treino estão abaixo de 330
+quantile(train$Appliances,c(0.95))
+
+#o que farei ==>
+# Copiar o dataset de treino => Identificar quais exemplos pertencem aos 5% maiores (outliers) ==> Substitui-los pela media
+
+trainCopy <- train
+mediaAppliances <- mean(trainCopy$Appliances)
+medianaAppliances <- median(trainCopy$Appliances)
 
 
+quantile95 <- quantile(train$Appliances,c(0.95))
 
+for (row in c(1:length(trainCopy$Appliances))){
 
+  if(trainCopy[row,1]>quantile95){
+    trainCopy[row,1]<- mediaAppliances
+  }
+}
 
+quantile(trainCopy$Appliances,c(0.95))
 
+boxplot(trainCopy$Appliances)
 
+melhorModelo <- analyzeModels(c("lm","rpart"),trainCopy,test,1)
 
+#após ajustar e substituir os outliers pela média a performance do modelo melhorou, chegando a quase 98% com o rpart
 
-
-
-
+#Podemos salvar o modelo para uso posterior em formato binário
+saveRDS(melhorModelo,file = "melhorModelo.rds")
 
 
