@@ -2,6 +2,8 @@ Previsão de gasto de energia de eletrodomésticos
 
 Este é um projeto da formação cientista de dados
 
+Os datasets utilizados são fornecidos juntamente com o material da formação
+
 Este projeto tem como objetivo criar um modelo que possa prever os gastos com eletricidade de eletrodomésticos baseando-se em diversas informações
 Entre elas: Informações de sensores de temperatura e umidade, informações meteorológicas, consumo com iluminação, data, dia da semana, horário
 
@@ -12,7 +14,7 @@ necessário para realizar as transformações realizadas nos dados, isso economiza 
 Também construi uma função que realiza o treinamento de diversos modelos com o uso do pacote caret e escolhe, através da métrica RMSE, qual é o melhor dos modelos retornando-o 
 para que posssa ser salvo e usado posteriormente
 
-Ao final ainda analiso o impacto do tratamente dos outliers no modelo, o que gerou um resultado positivo.
+Ao final ainda analiso o impacto do tratamente dos outliers no modelo
 
 
 Licença:

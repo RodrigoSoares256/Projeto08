@@ -204,6 +204,8 @@ predLM <- predict(modeloLM, test[-1])
 
 RMSE(predLM, test$Appliances)
 
+MAE(predLM, test$Appliances)
+
 saveRDS(modeloLM, file = "modeloLM.RDS")
 
 #Verificando a performance utilizando o random Forest
@@ -228,6 +230,8 @@ RMSE(predSVM, test$Appliances)
 
 #XGBData
 modeloXGBTree <- caret::train(x = train[-1], y= train$Appliances, method = "xgbTree")
+
+saveRDS(modeloXGBTree,"modeloXGBTree.RDS")
 
 modeloXGBTree <- readRDS("modeloXGBTree.RDS")
 
@@ -280,11 +284,19 @@ quantile(trainCopy$Appliances,c(0.95))
 
 boxplot(trainCopy$Appliances)
 
-melhorModelo <- analyzeModels(c("lm","rpart"),trainCopy,test,1)
+melhorModelo <- analyzeModels(c("lm","rpart","xgbTree"),trainCopy,test,1)
 
-#após ajustar e substituir os outliers pela média a performance do modelo melhorou, chegando a quase 98% com o rpart
+#após ajustar e substituir os outliers pela média a performance do modelo não melhorou, pelo menos não
+#com os modelos pesquisados
+#o modelo com o menor erro avaliado pelo RMSE continua sendo o XGBoost antes da atualização dos outliers
 
-#Podemos salvar o modelo para uso posterior em formato binário
+
+predMelhorModelo <- predict(melhorModelo,test[-1])
+
+RMSE(predMelhorModelo, test$Appliances)
+
 saveRDS(melhorModelo,file = "melhorModelo.rds")
+
+
 
 

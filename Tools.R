@@ -45,7 +45,7 @@ analyzeModels <- function(models,trainDataset,testDataset,colunaTarget){
   #e retornar aquele que apresenta a melhor acurácia de acordo com a métrica RMSE
   
   melhorModelo <- ''
-  melhorAcuracia <- 0.0
+  melhorAcuracia <- Inf
   
   for (modelo in models){
     print(paste("Realizando treinamento com modelo ", modelo))
@@ -53,7 +53,7 @@ analyzeModels <- function(models,trainDataset,testDataset,colunaTarget){
     #O próximo passo é realizar predicoes com o modelo criado
     predModelo <- predict(modeloAtual,testDataset[-colunaTarget])
     rmseModelo <- RMSE(predModelo,testDataset[,colunaTarget])
-    if (rmseModelo>melhorAcuracia){
+    if (rmseModelo<melhorAcuracia){
       melhorAcuracia <- rmseModelo
       melhorModelo <- modelo
       modeloRetorno <- modeloAtual
